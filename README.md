@@ -4,5 +4,5 @@ pyQGIS Toolbox script that generates a HAND map using the PCRaster plugin as exp
 Requires the user to have the PCRaster plugin installed
 
 input 1 = DEM\
-input 2 = stream threshold\
+input 2 = stream threshold
 
