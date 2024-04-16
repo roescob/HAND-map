@@ -52,67 +52,58 @@ class ExAlgo(QgsProcessingAlgorithm):
         raster_a = self.parameterAsRasterLayer(parameters, self.raster_layer, context)
         stream_threshold_a = self.parameterAsString(parameters, self.stream_threshold, context)
         output_path_raster_a = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
- 
-        #1.Converts DEM to PCRaster format
+
+        #STEPS
+        #1.Convert to workable format
         processing.run("pcraster:converttopcrasterformat",\
             {'INPUT':raster_a,\
             'INPUT2':3,\
                 'OUTPUT':'pcraster_temp'})
-
-        #2. lddcreate (generates flow direction)
+        #2. Generate flow direction
         processing.run("pcraster:lddcreate", \
             {'INPUT':'pcraster_temp',\
             'INPUT0':0,'INPUT1':0,'INPUT2':9999999,'INPUT4':9999999,'INPUT3':9999999,'INPUT5':9999999,\
                 'OUTPUT':'lddcreate_temp'})
-
-        #3. Scalar: Creates raster with scalar value 1.
+        #3. Create raster with scalar value 1.
         processing.run("pcraster:spatial", \
             {'INPUT':1,'INPUT1':3,\
             'INPUT2':'lddcreate_temp',\
                 'OUTPUT':'scalar_temp'})
-
-        #4. accuflux: Accumulated material flowing into downstream cell
+        #4. Generate accumulated material flowing downstream
         processing.run("pcraster:accuflux", \
             {'INPUT':'lddcreate_temp',\
             'INPUT2':'scalar_temp',\
                 'OUTPUT':'accuflux_temp'})
-
-        #5. spatial: the threshold must be calibrated (INPUT)
+        #5. Extract accumulated material
         processing.run("pcraster:spatial", \
             {'INPUT':stream_threshold_a,'INPUT1':3,\
             'INPUT2':'accuflux_temp',\
                 'OUTPUT':'spatial_temp'})
-
-        #6. Comparison operators (inputs 4 & 5 using => operator)
+        #6. Clean
         processing.run("pcraster:comparisonoperators", \
             {'INPUT':'accuflux_temp',\
             'INPUT1':1,'INPUT2':'spatial_temp',\
                 'OUTPUT':'comparison_operator_temp'})
-
-        #7. uniqueid
+        #7. Clean
         processing.run("pcraster:uniqueid", \
             {'INPUT':'comparison_operator_temp',\
                 'OUTPUT':'uniqueid_temp'})
-
-        #8. Conver Layer Data Type: Converts from scalar to nominal
+        #8. Convert from scalar to nominal
         processing.run("pcraster:convertdatatype", \
             {'INPUT':'uniqueid_temp',\
             'INPUT1':1,\
                 'OUTPUT':'convertlayerdatatype_temp'})
-
-        #9. subcatchment: inputs 2ldd and 8
+        #9. Generate sub-catchments
         processing.run("pcraster:subcatchment", \
             {'INPUT1':'lddcreate_temp',\
             'INPUT2':'convertlayerdatatype_temp',\
                 'OUTPUT':'subcatchment_temp'})
-
-        #10. Areaminimum: inputs 9subcatchment and 1DEM
+        #10. Areaminimum
         processing.run("pcraster:areaminimum", \
             {'INPUT':'subcatchment_temp',\
             'INPUT2':'pcraster_temp',\
                 'OUTPUT':'areaminimum_temp'})
- 
-        #11. RasterCalculator: computes HAND layer computing "1PCRaster_format@1"  - "10areaminimum@1"
+        #11. HAND elevation subtraction
         #RasterCalculator inputs and outputs
         areaminimum_rastercalculator_temp = QgsRasterLayer(r'areaminimum_temp')
         pcraster_rastercalculator_temp = QgsRasterLayer(r'pcraster_temp')
